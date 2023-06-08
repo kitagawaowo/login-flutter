@@ -1,25 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:movie_app/screens/login/sign_up.dart';
+import 'package:movie_app/data/http_helper.dart';
+import 'package:movie_app/data/user.dart';
+import 'package:movie_app/screens/movie/movies.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class Login extends StatefulWidget {
-  const Login({super.key});
+class SignUp extends StatefulWidget {
+  const SignUp({super.key});
 
   @override
-  State<Login> createState() => _LoginState();
+  State<SignUp> createState() => _SignUpState();
 }
 
-class _LoginState extends State<Login> {
+class _SignUpState extends State<SignUp> {
+  HttpHelper? _httpHelper;
   TextEditingController? _usernameController;
   TextEditingController? _passwordController;
+  User? _user;
   Future<SharedPreferences>? _prefs;
 
   @override
   void initState() {
+    _httpHelper = HttpHelper();
     _usernameController = TextEditingController();
     _passwordController = TextEditingController();
     _prefs = SharedPreferences.getInstance();
-    getUsername();
     super.initState();
   }
 
@@ -30,17 +34,24 @@ class _LoginState extends State<Login> {
     super.dispose();
   }
 
-  getUsername() async {
-    final pref = await _prefs;
-    final username = pref?.getString('username');
-    if (username != null) {
-      _usernameController?.text = username;
-    }
+  navigateTo({required Widget widget}) {
+    Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => widget,
+        ),
+        ((route) => false));
   }
 
-  signOut() async {
-    final pref = await _prefs;
-    pref?.remove('username');
+  createUser() async {
+    _user = await _httpHelper!
+        .createUser(_usernameController!.text, _passwordController!.text);
+
+    if (_user != null) {
+      final pref = await _prefs;
+      await pref?.setString('username', _user!.username);
+      navigateTo(widget: const Movies());
+    }
   }
 
   @override
@@ -108,29 +119,33 @@ class _LoginState extends State<Login> {
                 ),
               ),
               SizedBox(
-                width: size.width * 0.85,
-                child: ElevatedButton(
-                  onPressed: () {
-                    getUsername();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.all(8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                width: size.width * 0.90,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: _passwordController,
+                    decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.all(8.0),
+                        filled: true,
+                        fillColor: Theme.of(context).secondaryHeaderColor,
+                        prefixIcon: const Icon(
+                          Icons.lock,
+                        ),
+                        suffixIcon: const Icon(Icons.visibility),
+                        border: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(30),
+                          ),
+                        ),
+                        hintText: 'Password'),
                   ),
-                  child: const Text('Sign in'),
                 ),
               ),
               SizedBox(
                 width: size.width * 0.85,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SignUp(),
-                        ));
+                    createUser();
                   },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.all(8),
@@ -141,10 +156,23 @@ class _LoginState extends State<Login> {
                   child: const Text('Sign up'),
                 ),
               ),
+              SizedBox(
+                width: size.width * 0.85,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.all(8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text('Sign in'),
+                ),
+              ),
               TextButton(
-                onPressed: () {
-                  signOut();
-                },
+                onPressed: () {},
                 child: const Text('Forgot password?'),
               )
             ],
